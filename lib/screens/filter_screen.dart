@@ -15,9 +15,10 @@ class FilterScreen extends StatefulWidget {
 class _FilterScreenState extends State<FilterScreen> {
   final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _purchaseController = TextEditingController();
+  final TextEditingController _paymentTypeController = TextEditingController();
 
   String? _selectCustomer;
-  String? _payment;
+  String? _selectMobileNumber;
   DateTime? _fromDate;
   DateTime? _toDate;
 
@@ -25,6 +26,7 @@ class _FilterScreenState extends State<FilterScreen> {
   void dispose() {
     _mobileController.dispose();
     _purchaseController.dispose();
+    _paymentTypeController.dispose();
     super.dispose();
   }
 
@@ -52,31 +54,41 @@ class _FilterScreenState extends State<FilterScreen> {
           CustomDropDownWidget(
               value: _selectCustomer,
               items: customerData.keys.toList(),
-              onChanged: updateCustomerDetails),
+              onChanged: (value) {
+                setState(() {
+                  _selectCustomer = value;
+                });
+              },),
           kSizedBox15,
-          CustomTextField(
-            label: 'Mobile Number',
-            controller: _mobileController,
-            readOnly: true,
-          ),
+          const CustomTextWidget(text: 'Mobile Number'),
+          CustomDropDownWidget(
+            value: _selectMobileNumber,
+            items: customerData.entries
+                .map((entry) => entry.value['mobile'].toString())
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectMobileNumber = value;
+              });
+            },),
           kSizedBox15,
           CustomTextField(
             label: 'Purchase Code',
             controller: _purchaseController,
-            readOnly: true,
+            onTap: () {
+              _showPurchaseCodeSelector(context);
+            },
+
           ),
           kSizedBox15,
-          const CustomTextWidget(text: 'Payment Type'),
-          kSizedBox8,
-          CustomDropDownWidget(
-            value: _payment,
-            items: paymentType.toList(),
-            onChanged: (value) {
-              setState(() {
-                _payment = value;
-              });
+          CustomTextField(
+            label: 'Payment Type',
+            controller: _paymentTypeController,
+            onTap: () {
+              _showPaymentTypeSelector(context);
             },
           ),
+
           kSizedBox15,
           const CustomTextWidget(text: 'Date Range'),
           kSizedBox8,
@@ -139,18 +151,22 @@ class _FilterScreenState extends State<FilterScreen> {
     if (selectCustomer != null && customerData.containsKey(selectCustomer)) {
       setState(() {
         _selectCustomer = selectCustomer;
-        _mobileController.text = customerData[selectCustomer]!['mobile']!;
-        _purchaseController.text =
-            customerData[selectCustomer]!['purchaseCode']!;
+        // Update the related fields based on the selected customer
+        _mobileController.text = customerData[selectCustomer]!['mobile'] ?? '';
+        _purchaseController.text = customerData[selectCustomer]!['purchaseCode'] ?? '';
+        _paymentTypeController.text = customerData[selectCustomer]!['paymentType'] ?? '';
       });
     } else {
+      // Clear the fields if no customer is selected
       setState(() {
         _selectCustomer = null;
         _mobileController.clear();
         _purchaseController.clear();
+        _paymentTypeController.clear();
       });
     }
   }
+
 
   void _pickDate({required bool isFromDate}) async {
     DateTime? pickedDate = await showDatePicker(
@@ -189,12 +205,148 @@ class _FilterScreenState extends State<FilterScreen> {
   void _applyFilter() {
     final filter = {
       'customerName': _selectCustomer,
-      'mobileNumber': _mobileController.text,
+      'mobile': _selectMobileNumber,
       'purchaseCode': _purchaseController.text,
-      'paymentType': _payment,
+      'paymentType': _paymentTypeController.text,
       'fromDate': _fromDate,
       'toDate': _toDate,
     };
     Navigator.pop(context, filter);
   }
+
+  void _showPurchaseCodeSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      backgroundColor: ColorsManager.whiteColor,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Select Purchase Code',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: ColorsManager.blackColor, // Title color
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  itemBuilder: (context, index) {
+                    final purchaseCode = customerData.values
+                        .map((e) => e['purchaseCode'])
+                        .toSet() // Remove duplicates
+                        .toList()[index];
+                    return ListTile(
+                      leading: Icon(
+                        Icons.card_giftcard,
+                         color: ColorsManager.burgundyColor,
+                      ),
+                      title: Text(
+                        purchaseCode,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: ColorsManager.blackColor
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      onTap: () {
+                        setState(() {
+                          _purchaseController.text = purchaseCode;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                  separatorBuilder: (context, index) => kSizedBox8,
+                  itemCount: customerData.values
+                      .map((e) => e['purchaseCode'])
+                      .toSet()
+                      .length, // Count of unique purchase codes
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPaymentTypeSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      backgroundColor: ColorsManager.whiteColor,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Select Payment Type',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: ColorsManager.blackColor
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  itemBuilder: (context, index) {
+                    final purchaseCode = customerData.values
+                        .map((e) => e['paymentType'])
+                        .toSet()
+                        .toList()[index];
+                    return ListTile(
+                      leading:  Icon(
+                        Icons.payment,
+                        color: ColorsManager.burgundyColor,
+                      ),
+                      title: Text(
+                        purchaseCode,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: ColorsManager.blackColor,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      onTap: () {
+                        setState(() {
+                          _paymentTypeController.text = purchaseCode;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                  separatorBuilder: (context, index) => kSizedBox8,
+                  itemCount: customerData.values
+                      .map((e) => e['paymentType'])
+                      .toSet()
+                      .length,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
 }

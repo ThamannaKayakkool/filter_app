@@ -1,7 +1,11 @@
+import 'package:buttons_tabbar/buttons_tabbar.dart';
 import 'package:filter_app/core/color.dart';
 import 'package:filter_app/core/constants.dart';
+import 'package:filter_app/screens/all.dart';
 import 'package:filter_app/screens/filter_screen.dart';
-import 'package:filter_app/widgets/custom_text_widget.dart';
+import 'package:filter_app/screens/name.dart';
+import 'package:filter_app/screens/payment_type.dart';
+import 'package:filter_app/screens/purchase_code.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -11,90 +15,82 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> filteredData = customerData.entries
       .map(
         (item) => {
           'name': item.key,
           'mobile': item.value['mobile'],
           'purchaseCode': item.value['purchaseCode'],
+          'paymentType': item.value['paymentType'],
+          'date': item.value['date'],
         },
       )
       .toList();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ColorsManager.whiteColor,
-      appBar: AppBar(
-        backgroundColor: ColorsManager.burgundyColor,
-        title: Text(
-          'Home',
-          style: TextStyle(
-              color: ColorsManager.whiteColor, fontWeight: FontWeight.w600),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        backgroundColor: ColorsManager.whiteColor,
+        appBar: AppBar(
+          backgroundColor: ColorsManager.whiteColor,
+          title: Text(
+            'Home',
+            style: TextStyle(
+                color: ColorsManager.burgundyColor,
+                fontWeight: FontWeight.w600),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+                onPressed: () async {
+                  final filter = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FilterScreen(),
+                      ));
+                  if (filter != null) {
+                    _applyFilter(filter);
+                  }
+                },
+                icon: Icon(
+                  Icons.sort,
+                  color: ColorsManager.burgundyColor,
+                ))
+          ],
+          bottom: ButtonsTabBar(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+            backgroundColor: ColorsManager.burgundyColor,
+            unselectedBackgroundColor:
+                ColorsManager.burgundyColor.withOpacity(0.1),
+            unselectedLabelStyle: TextStyle(
+              color: ColorsManager.blackColor,
+              fontSize: 14,
+            ),
+            labelStyle: TextStyle(
+                color: ColorsManager.whiteColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600),
+            tabs: const [
+              Tab(text: "All"),
+              Tab(text: "Name"),
+              Tab(text: "PurchaseCode"),
+              Tab(text: "PaymentType"),
+            ],
+          ),
         ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-              onPressed: () async {
-                final filter = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const FilterScreen(),
-                    ));
-                if (filter != null) {
-                  _applyFilter(filter);
-                }
-              },
-              icon: Icon(
-                Icons.sort,
-                color: ColorsManager.whiteColor,
-              ))
-        ],
+        body: TabBarView(
+          children: [
+            All(filteredData: filteredData),
+            const Name(),
+           const PurchaseCode(),
+           const PaymentType(),
+          ],
+        ),
       ),
-      body: ListView.separated(
-          itemBuilder: (context, index) {
-            final item = filteredData[index];
-            return Card(
-                color: ColorsManager.whiteColor,
-                elevation: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: ColorsManager.blackColor)),
-                child: ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: CircleAvatar(
-                    backgroundColor: ColorsManager.burgundyColor,
-                    child: Text(
-                      item['name']?.substring(0, 1)?.toUpperCase() ?? '',
-                      style: TextStyle(
-                          color: ColorsManager.whiteColor,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  title: CustomTextWidget(text: item['name']),
-                  subtitle: Text(
-                    'Mobile Number: ${item['mobile']}\nPurchase Code: ${item['purchaseCode']}',
-                    style: TextStyle(
-                        color: ColorsManager.blackColor,
-                        fontWeight: FontWeight.w400),
-                  ),
-                  trailing: IconButton(
-                    onPressed: () {},
-                    icon: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: ColorsManager.blackColor,
-                    ),
-                  ),
-                ));
-          },
-          separatorBuilder: (context, index) {
-            return kSizedBox15;
-          },
-          itemCount: filteredData.length),
     );
   }
 
@@ -102,22 +98,44 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       filteredData = customerData.entries
           .where((element) {
+            final purchaseCodeMatches =
+                (filter['purchaseCode']?.isEmpty ?? true) ||
+                    element.value['purchaseCode'] == filter['purchaseCode'];
+
+            final paymentTypeMatches =
+                (filter['paymentType']?.isEmpty ?? true) ||
+                    element.value['paymentType'] == filter['paymentType'];
+
             final nameMatches = filter['customerName'] == null ||
                 element.key == filter['customerName'];
-            final mobileNumberMatches = filter['mobileNumber']!.isEmpty ||
-                element.value['mobile'] == filter['mobileNumber'];
-            final purchaseCodeMatches = filter['purchaseCode']!.isEmpty ||
-                element.value['purchaseCode'] == filter['purchaseCode'];
-            return nameMatches && mobileNumberMatches && purchaseCodeMatches;
+
+            final mobileNumberMatches = (filter['mobile']?.isEmpty ?? true) ||
+                element.value['mobile'] == filter['mobile'];
+
+            final dateMatches = (filter['fromDate'] == null ||
+                    (element.value['date'] as DateTime)
+                        .isAfter(filter['fromDate']!)) &&
+                (filter['toDate'] == null ||
+                    (element.value['date'] as DateTime)
+                        .isBefore(filter['toDate']!));
+
+            return nameMatches &&
+                mobileNumberMatches &&
+                purchaseCodeMatches &&
+                paymentTypeMatches &&
+                dateMatches;
           })
           .map(
             (item) => {
               'name': item.key,
               'mobile': item.value['mobile'],
               'purchaseCode': item.value['purchaseCode'],
+              'paymentType': item.value['paymentType'],
+              'date': item.value['date'],
             },
           )
           .toList();
     });
   }
 }
+
