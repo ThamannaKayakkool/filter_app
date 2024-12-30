@@ -1,141 +1,131 @@
-import 'package:buttons_tabbar/buttons_tabbar.dart';
+import 'package:filter_app/bloc/filter_bloc.dart';
 import 'package:filter_app/core/color.dart';
 import 'package:filter_app/core/constants.dart';
-import 'package:filter_app/screens/all.dart';
-import 'package:filter_app/screens/filter_screen.dart';
-import 'package:filter_app/screens/name.dart';
-import 'package:filter_app/screens/payment_type.dart';
-import 'package:filter_app/screens/purchase_code.dart';
+import 'package:filter_app/screens/details_screen.dart';
+import 'package:filter_app/widgets/date_filter_widget.dart';
+import 'package:filter_app/widgets/date_picker_widget.dart';
+import 'package:filter_app/widgets/search_text_field_widget.dart';
+import 'package:filter_app/widgets/search_type_selector_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  List<Map<String, dynamic>> filteredData = customerData.entries
-      .map(
-        (item) => {
-          'name': item.key,
-          'mobile': item.value['mobile'],
-          'purchaseCode': item.value['purchaseCode'],
-          'paymentType': item.value['paymentType'],
-          'date': item.value['date'],
-        },
-      )
-      .toList();
-
-  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        backgroundColor: ColorsManager.whiteColor,
-        appBar: AppBar(
-          backgroundColor: ColorsManager.whiteColor,
-          title: Text(
-            'Home',
-            style: TextStyle(
-                color: ColorsManager.burgundyColor,
-                fontWeight: FontWeight.w600),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-                onPressed: () async {
-                  final filter = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FilterScreen(),
-                      ));
-                  if (filter != null) {
-                    _applyFilter(filter);
-                  }
-                },
-                icon: Icon(
-                  Icons.sort,
-                  color: ColorsManager.burgundyColor,
-                ))
-          ],
-          bottom: ButtonsTabBar(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            backgroundColor: ColorsManager.burgundyColor,
-            unselectedBackgroundColor:
-                ColorsManager.burgundyColor.withOpacity(0.1),
-            unselectedLabelStyle: TextStyle(
-              color: ColorsManager.blackColor,
-              fontSize: 14,
-            ),
-            labelStyle: TextStyle(
-                color: ColorsManager.whiteColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600),
-            tabs: const [
-              Tab(text: "All"),
-              Tab(text: "Name"),
-              Tab(text: "PurchaseCode"),
-              Tab(text: "PaymentType"),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: ColorsManager.whiteColor,
+      appBar: AppBar(
+        backgroundColor: ColorsManager.oliveGreenColor,
+        title: Text(
+          'Home',
+          style: TextStyle(
+              color: ColorsManager.whiteColor, fontWeight: FontWeight.w600),
         ),
-        body: TabBarView(
-          children: [
-            All(filteredData: filteredData),
-            const Name(),
-           const PurchaseCode(),
-           const PaymentType(),
-          ],
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8),
+        child: BlocBuilder<FilterBloc, FilterState>(
+          builder: (context, state) {
+            return Column(
+              children: [
+                _buildSearchFilterCard(context),
+                kSizedBox25,
+                if (state.isFiltered)
+                  DetailsScreen(filteredData: state.filteredData),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  void _applyFilter(Map<String, dynamic> filter) {
-    setState(() {
-      filteredData = customerData.entries
-          .where((element) {
-            final purchaseCodeMatches =
-                (filter['purchaseCode']?.isEmpty ?? true) ||
-                    element.value['purchaseCode'] == filter['purchaseCode'];
-
-            final paymentTypeMatches =
-                (filter['paymentType']?.isEmpty ?? true) ||
-                    element.value['paymentType'] == filter['paymentType'];
-
-            final nameMatches = filter['customerName'] == null ||
-                element.key == filter['customerName'];
-
-            final mobileNumberMatches = (filter['mobile']?.isEmpty ?? true) ||
-                element.value['mobile'] == filter['mobile'];
-
-            final dateMatches = (filter['fromDate'] == null ||
-                    (element.value['date'] as DateTime)
-                        .isAfter(filter['fromDate']!)) &&
-                (filter['toDate'] == null ||
-                    (element.value['date'] as DateTime)
-                        .isBefore(filter['toDate']!));
-
-            return nameMatches &&
-                mobileNumberMatches &&
-                purchaseCodeMatches &&
-                paymentTypeMatches &&
-                dateMatches;
-          })
-          .map(
-            (item) => {
-              'name': item.key,
-              'mobile': item.value['mobile'],
-              'purchaseCode': item.value['purchaseCode'],
-              'paymentType': item.value['paymentType'],
-              'date': item.value['date'],
-            },
-          )
-          .toList();
-    });
+  Widget _buildSearchFilterCard(BuildContext context) {
+    return Card(
+      color: ColorsManager.whiteColor,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: ColorsManager.oliveGreenColor,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: DatePickerWidget(
+                    label: 'From',
+                    selectedDate: context.read<FilterBloc>().state.fromDate,
+                    onDateSelected: (date) =>
+                        context.read<FilterBloc>().add(UpdateFromDate(date)),
+                  ),
+                ),
+                kSizedBoxW2,
+                Expanded(
+                  flex: 2,
+                  child: DatePickerWidget(
+                    label: 'To',
+                    selectedDate: context.read<FilterBloc>().state.toDate,
+                    onDateSelected: (date) =>
+                        context.read<FilterBloc>().add(UpdateToDate(date)),
+                  ),
+                ),
+                const DateFilterWidget()
+              ],
+            ),
+            kSizedBox20,
+            SearchTypeSelectorWidget(
+              selectedSearchType: context.read<FilterBloc>().state.searchType,
+              onSearchTypeChanged: (newType) =>
+                  context.read<FilterBloc>().add(UpdateSearchType(newType)),
+            ),
+            kSizedBox20,
+            if (context.read<FilterBloc>().state.searchType.isNotEmpty &&
+                context.read<FilterBloc>().state.searchType != 'All') ...[
+              SearchTextFieldWidget(
+                searchQuery: context.read<FilterBloc>().state.searchQuery,
+                onSearchQueryChanged: (query) =>
+                    context.read<FilterBloc>().add(UpdateSearchQuery(query)),
+              ),
+              kSizedBox20,
+            ],
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () =>
+                    context.read<FilterBloc>().add(ToggleFilterData()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ColorsManager.oliveGreenColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                label: Text(
+                  'Show',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: ColorsManager.whiteColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
+
+
+
+
 

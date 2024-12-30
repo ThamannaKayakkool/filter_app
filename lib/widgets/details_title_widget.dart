@@ -1,4 +1,5 @@
 import 'package:filter_app/core/color.dart';
+import 'package:filter_app/core/constants.dart';
 import 'package:flutter/material.dart';
 
 class DetailsTitleWidget extends StatelessWidget {
@@ -19,7 +20,7 @@ class DetailsTitleWidget extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
+        kSizedBox4,
         Text(
           value,
           style: TextStyle(
